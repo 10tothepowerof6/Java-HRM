@@ -1,0 +1,184 @@
+{
+  "roles": [
+    {
+      "id": "ADMIN",
+      "displayName": "Quản trị",
+      "permissions": {
+        "dashboard": {
+          "view": true,
+          "add": true,
+          "edit": true,
+          "delete": true
+        },
+        "nhanvien": {
+          "view": true,
+          "add": true,
+          "edit": true,
+          "delete": true
+        },
+        "phongban": {
+          "view": true,
+          "add": true,
+          "edit": true,
+          "delete": true
+        },
+        "chucvu": {
+          "view": true,
+          "add": true,
+          "edit": true,
+          "delete": true
+        },
+        "hopdong": {
+          "view": true,
+          "add": true,
+          "edit": true,
+          "delete": true
+        },
+        "dean": {
+          "view": true,
+          "add": true,
+          "edit": true,
+          "delete": true
+        },
+        "chamcong": {
+          "view": true,
+          "add": true,
+          "edit": true,
+          "delete": true
+        },
+        "nghiphep": {
+          "view": true,
+          "add": true,
+          "edit": true,
+          "delete": true
+        },
+        "phucap": {
+          "view": true,
+          "add": true,
+          "edit": true,
+          "delete": true
+        },
+        "thuong": {
+          "view": true,
+          "add": true,
+          "edit": true,
+          "delete": true
+        },
+        "bangluong": {
+          "view": true,
+          "add": true,
+          "edit": true,
+          "delete": true
+        },
+        "caidat": {
+          "view": true,
+          "add": true,
+          "edit": true,
+          "delete": true
+        },
+        "taikhoan": {
+          "view": true,
+          "add": true,
+          "edit": true,
+          "delete": true
+        }
+      }
+    },
+    {
+      "id": "VIEWONLY",
+      "displayName": "View-Only",
+      "permissions": {
+        "dashboard": {
+          "view": true,
+          "add": false,
+          "edit": false,
+          "delete": false
+        },
+        "nhanvien": {
+          "view": true,
+          "add": false,
+          "edit": false,
+          "delete": false
+        },
+        "phongban": {
+          "view": true,
+          "add": false,
+          "edit": false,
+          "delete": false
+        },
+        "chucvu": {
+          "view": true,
+          "add": false,
+          "edit": false,
+          "delete": false
+        },
+        "hopdong": {
+          "view": true,
+          "add": false,
+          "edit": false,
+          "delete": false
+        },
+        "dean": {
+          "view": true,
+          "add": false,
+          "edit": false,
+          "delete": false
+        },
+        "chamcong": {
+          "view": true,
+          "add": false,
+          "edit": false,
+          "delete": false
+        },
+        "nghiphep": {
+          "view": true,
+          "add": false,
+          "edit": false,
+          "delete": false
+        },
+        "phucap": {
+          "view": false,
+          "add": false,
+          "edit": false,
+          "delete": false
+        },
+        "thuong": {
+          "view": false,
+          "add": false,
+          "edit": false,
+          "delete": false
+        },
+        "bangluong": {
+          "view": false,
+          "add": false,
+          "edit": false,
+          "delete": false
+        },
+        "caidat": {
+          "view": false,
+          "add": false,
+          "edit": false,
+          "delete": false
+        },
+        "taikhoan": {
+          "view": false,
+          "add": false,
+          "edit": false,
+          "delete": false
+        }
+      }
+    }
+  ],
+  "users": [
+    {
+      "username": "admin",
+      "password": "admin",
+      "roleId": "ADMIN"
+    },
+    {
+      "username": "test",
+      "password": "test",
+      "roleId": "VIEWONLY"
+    }
+  ]
+}

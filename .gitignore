@@ -1,0 +1,19 @@
+# Theo yêu cầu: không đưa lên remote
+/HumanResourceManagement/
+/requirements/
+/task.md.resolved
+/architecture_plan.md.resolved
+
+# Java / IDE / build
+out/
+bin/
+*.class
+.idea/
+*.iml
+.settings/
+.classpath
+.project
+
+# Hệ thống
+.DS_Store
+Thumbs.db
