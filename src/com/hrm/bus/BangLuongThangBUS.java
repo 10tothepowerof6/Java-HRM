@@ -5,6 +5,8 @@ import com.hrm.dto.BangLuongThangDTO;
 import java.util.ArrayList;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
+import java.util.Calendar;
+import java.util.Date;
 import java.util.stream.Collectors;
 import com.hrm.bus.*;
 import com.hrm.dto.*;
@@ -122,7 +124,12 @@ public class BangLuongThangBUS {
      * </p>
      */
     public int generateBangLuong(int thang, int nam) {
+        if (thang < 1 || thang > 12 || nam < 2000) {
+            throw new IllegalArgumentException("Tháng/năm không hợp lệ để tính lương.");
+        }
         int countSuccess = 0;
+        Date monthStart = getMonthStart(thang, nam);
+        Date monthEnd = getMonthEnd(thang, nam);
         
         NhanVienBUS nvBus = new NhanVienBUS();
         ChucVuBUS cvBus = new ChucVuBUS();
@@ -168,13 +175,27 @@ public class BangLuongThangBUS {
             }
 
             BigDecimal luongCoBan = BigDecimal.ZERO;
+            HopDongDTO hopDongHieuLuc = null;
             for (HopDongDTO hd : hdBus.getList()) {
-                if (hd.getMaNV().equals(maNV) && "Có hiệu lực".equals(hd.getTrangThai())) {
-                    if (hd.getLuongHopDong() != null) {
-                        luongCoBan = heSoLuong.multiply(hd.getLuongHopDong()).setScale(0, RoundingMode.HALF_UP);
-                        break;
+                if (hd == null || hd.getMaNV() == null) continue;
+                if (!maNV.equals(hd.getMaNV())) continue;
+                if (!"Có hiệu lực".equalsIgnoreCase(hd.getTrangThai())) continue;
+                if (hd.getLuongHopDong() == null || hd.getLuongHopDong().signum() <= 0) continue;
+                if (!isDateRangeOverlappingMonth(hd.getNgayBatDau(), hd.getNgayKetThuc(), monthStart, monthEnd)) continue;
+
+                if (hopDongHieuLuc == null) {
+                    hopDongHieuLuc = hd;
+                } else {
+                    Date curStart = hd.getNgayBatDau();
+                    Date bestStart = hopDongHieuLuc.getNgayBatDau();
+                    if (bestStart == null || (curStart != null && curStart.after(bestStart))) {
+                        hopDongHieuLuc = hd;
                     }
                 }
+            }
+            if (hopDongHieuLuc != null) {
+                // LuongHopDong được xem là mức lương tháng cuối cùng của hợp đồng.
+                luongCoBan = hopDongHieuLuc.getLuongHopDong().setScale(0, RoundingMode.HALF_UP);
             }
 
             // Fallback về Mức lương cơ sở * Hệ số nếu nhân viên chưa có hợp đồng hiệu lực
@@ -185,28 +206,27 @@ public class BangLuongThangBUS {
             // --- Số Ngày Công Thực Tế ---
             // Lọc chấm công của tháng/năm này
             long soNgayCongLong = ccBus.getList().stream()
-                .filter(cc -> cc.getMaNV().equals(maNV))
-                .filter(cc -> cc.getNgayLamViec() != null && (cc.getNgayLamViec().getMonth()+1) == thang && (cc.getNgayLamViec().getYear()+1900) == nam)
-                .filter(cc -> "Đi làm".equals(cc.getTrangThai()))
+                .filter(cc -> cc.getMaNV() != null && cc.getMaNV().equals(maNV))
+                .filter(cc -> isInMonthYear(cc.getNgayLamViec(), thang, nam))
+                .filter(cc -> "Đi làm".equalsIgnoreCase(cc.getTrangThai()))
                 .count();
             int soNgayCong = (int) soNgayCongLong;
 
             // --- Phụ Cấp ---
-            // Giả định đơn giản: Tổng các phụ cấp đang có hiệu lực trong tháng đó
-            // Lọc: NgayApDung <= last day of month, NgayKetThuc >= first day of month (hoặc null)
             BigDecimal tongPhuCap = BigDecimal.ZERO;
             for (PhuCapDTO pc : pcBus.getList()) {
-                if (pc.getMaNV().equals(maNV)) {
-                    // Logic lọc ngày hiệu lực có thể phức tạp, tạm thời lấy hết các phụ cấp đang có
-                    tongPhuCap = tongPhuCap.add(pc.getSoTien());
-                }
+                if (pc == null || pc.getMaNV() == null || pc.getSoTien() == null) continue;
+                if (!pc.getMaNV().equals(maNV)) continue;
+                if (!isDateRangeOverlappingMonth(pc.getNgayApDung(), pc.getNgayKetThuc(), monthStart, monthEnd)) continue;
+                tongPhuCap = tongPhuCap.add(pc.getSoTien());
             }
             
-            // --- Cả thưởng từ bảng phân công đề án (Phụ cấp dự án) ---
+            // --- Phụ cấp dự án từ bảng phân công đề án ---
             for (PhanCongDeAnDTO pcda : pcdaBus.getList()) {
-                if (pcda.getMaNV().equals(maNV) && pcda.getPhuCapDeAn() != null) {
-                    tongPhuCap = tongPhuCap.add(pcda.getPhuCapDeAn());
-                }
+                if (pcda == null || pcda.getMaNV() == null || pcda.getPhuCapDeAn() == null) continue;
+                if (!pcda.getMaNV().equals(maNV)) continue;
+                if (!isDateRangeOverlappingMonth(pcda.getNgayBatDau(), pcda.getNgayKetThuc(), monthStart, monthEnd)) continue;
+                tongPhuCap = tongPhuCap.add(pcda.getPhuCapDeAn());
             }
 
             // --- Thưởng ---
@@ -250,5 +270,54 @@ public class BangLuongThangBUS {
             }
         }
         return countSuccess;
+    }
+
+    private static boolean isInMonthYear(Date d, int thang, int nam) {
+        if (d == null) return false;
+        Calendar cal = Calendar.getInstance();
+        cal.setTime(d);
+        return (cal.get(Calendar.MONTH) + 1) == thang && cal.get(Calendar.YEAR) == nam;
+    }
+
+    private static boolean isDateRangeOverlappingMonth(Date start, Date end, Date monthStart, Date monthEnd) {
+        if (start == null || monthStart == null || monthEnd == null) return false;
+        Date effectiveEnd = end != null ? end : farFutureDate();
+        return !start.after(monthEnd) && !effectiveEnd.before(monthStart);
+    }
+
+    private static Date getMonthStart(int thang, int nam) {
+        Calendar cal = Calendar.getInstance();
+        cal.set(Calendar.YEAR, nam);
+        cal.set(Calendar.MONTH, thang - 1);
+        cal.set(Calendar.DAY_OF_MONTH, 1);
+        cal.set(Calendar.HOUR_OF_DAY, 0);
+        cal.set(Calendar.MINUTE, 0);
+        cal.set(Calendar.SECOND, 0);
+        cal.set(Calendar.MILLISECOND, 0);
+        return cal.getTime();
+    }
+
+    private static Date getMonthEnd(int thang, int nam) {
+        Calendar cal = Calendar.getInstance();
+        cal.set(Calendar.YEAR, nam);
+        cal.set(Calendar.MONTH, thang - 1);
+        cal.set(Calendar.DAY_OF_MONTH, cal.getActualMaximum(Calendar.DAY_OF_MONTH));
+        cal.set(Calendar.HOUR_OF_DAY, 23);
+        cal.set(Calendar.MINUTE, 59);
+        cal.set(Calendar.SECOND, 59);
+        cal.set(Calendar.MILLISECOND, 999);
+        return cal.getTime();
+    }
+
+    private static Date farFutureDate() {
+        Calendar cal = Calendar.getInstance();
+        cal.set(Calendar.YEAR, 9999);
+        cal.set(Calendar.MONTH, Calendar.DECEMBER);
+        cal.set(Calendar.DAY_OF_MONTH, 31);
+        cal.set(Calendar.HOUR_OF_DAY, 23);
+        cal.set(Calendar.MINUTE, 59);
+        cal.set(Calendar.SECOND, 59);
+        cal.set(Calendar.MILLISECOND, 999);
+        return cal.getTime();
     }
 }
